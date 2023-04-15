@@ -48,7 +48,46 @@ CAN_HandleTypeDef hcan;
 TIM_HandleTypeDef htim4;
 
 /* USER CODE BEGIN PV */
+uint8_t ACC_BUFFER_SIZE = 6;
+CAN_TxHeaderTypeDef Tx1Header;
+uint8_t TxData_ACC[6] = {0};
+uint32_t TX_ID = 11;
+//uint32_t TX_ID = 19;
+uint32_t mailbox;
+CAN_FilterTypeDef sFilterConfig;
+uint8_t RxTime = 100;
+uint16_t tenth_ms = 0;
+uint16_t tenth_ms1 = 0;
+uint8_t averageCount = 10;
+volatile uint8_t channel = 0;
+volatile uint32_t averageTemp = 0;
+volatile uint32_t averageValue[3] = {0};
 
+uint32_t AD_DMA[3] = {0};
+uint16_t X = 0;
+uint16_t Y = 0;
+uint16_t Z = 0;
+float OFFSET = 3600;
+
+float X_Volt = 0;
+float Y_Volt = 0;
+float Z_Volt = 0;
+
+float X_Volt_Change = 0;
+float Y_Volt_Change = 0;
+float Z_Volt_Change = 0;
+
+float Xg = 0;
+float Yg = 0;
+float Zg = 0;
+
+uint16_t sensitivity_x = 300;
+uint16_t sensitivity_y = 300;
+uint16_t sensitivity_z = 300;
+
+uint16_t Xmg = 0;
+uint16_t Ymg = 0;
+uint16_t Zmg = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -59,12 +98,26 @@ static void MX_ADC1_Init(void);
 static void MX_CAN_Init(void);
 static void MX_TIM4_Init(void);
 /* USER CODE BEGIN PFP */
-
+void CanDataTx_ACC(uint16_t);
+void ADC_ValueAverage(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  if(tenth_ms >= RxTime)
+  {
+		CanDataTx_ACC(TX_ID);
+		HAL_CAN_AddTxMessage(&hcan, &Tx1Header, TxData_ACC, &mailbox);
+		tenth_ms = 0;
+  }
+  if(htim->Instance==TIM4)
+    tenth_ms++;
+		ADC_ValueAverage();
+		//tenth_ms1++;
+	
+}
 /* USER CODE END 0 */
 
 /**
@@ -100,13 +153,51 @@ int main(void)
   MX_CAN_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
-
+	HAL_TIM_Base_Start_IT(&htim4);
+	HAL_ADCEx_Calibration_Start(&hadc1);
+	HAL_ADC_Start_DMA(&hadc1, AD_DMA, 3);
+	__HAL_RCC_CAN1_CLK_ENABLE();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+		//Calculate input voltage
+		X = (float)averageValue[0];
+		Y = (float)averageValue[1];
+		Z = (float)averageValue[2];
+		X_Volt= (X * 3300) / 4096;
+		Y_Volt= (Y * 3300) / 4096;
+		Z_Volt= (Z * 3300) / 4096;
+		
+		
+		/*Xmg=(X_Volt*2.18)*1000;
+		Ymg=(Y_Volt*2.18)*1000;
+		Zmg=(Z_Volt*2.18)*1000;*/
+		
+		//Determine change in V
+		X_Volt_Change = X_Volt - (3300 / 2.0);
+		Y_Volt_Change = Y_Volt - (3300 / 2.0);
+		Z_Volt_Change = Z_Volt - (3300 / 2.0);
+	
+		//Convert to G-Force
+		Xg = (X_Volt_Change / sensitivity_x);
+		Yg = (Y_Volt_Change / sensitivity_y);
+		Zg = (Z_Volt_Change / sensitivity_z);
+		Xmg = Xg*1000 + OFFSET;
+		Ymg = Yg*1000 + OFFSET;
+		Zmg = Zg*1000 + OFFSET;
+    
+		
+		TxData_ACC[0] = Xmg & 0x00FF; //8 low bits
+		TxData_ACC[1] = Xmg >> 8; //4 high bits
+		
+		TxData_ACC[2] = Ymg & 0x00FF; //8 low bits
+		TxData_ACC[3] = Ymg >> 8; //4 high bits
+		
+		TxData_ACC[4] = Zmg & 0x00FF; //8 low bits
+		TxData_ACC[5] = Zmg >> 8; //4 high bits
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -261,12 +352,37 @@ static void MX_CAN_Init(void)
   hcan.Init.AutoRetransmission = DISABLE;
   hcan.Init.ReceiveFifoLocked = DISABLE;
   hcan.Init.TransmitFifoPriority = DISABLE;
-  if (HAL_CAN_Init(&hcan) != HAL_OK)
-  {
+  if (HAL_CAN_Init(&hcan) != HAL_OK) {
     Error_Handler();
   }
   /* USER CODE BEGIN CAN_Init 2 */
+	sFilterConfig.FilterBank = 0;
+	sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
+	sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
+	sFilterConfig.FilterIdHigh = 0xFFFF;
+	sFilterConfig.FilterIdLow = 0x0000;
+	sFilterConfig.FilterMaskIdHigh = 0x0000;
+	sFilterConfig.FilterMaskIdLow = 0x0000;
+	sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
+	sFilterConfig.FilterActivation = ENABLE;
+	sFilterConfig.SlaveStartFilterBank = 0;
+		
+	if (HAL_CAN_ConfigFilter(&hcan, &sFilterConfig) != HAL_OK) {
+	/* Filter configuration Error */
+	Error_Handler();
+	}
 
+
+
+	/*##-3- Start the CAN peripheral ###########################################*/
+	if (HAL_CAN_Start(&hcan) != HAL_OK) {
+		/* Start Error */
+		Error_Handler();
+	}
+	if (HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING | CAN_IT_TX_MAILBOX_EMPTY) != HAL_OK) {
+		/* Notification Error */
+		Error_Handler();
+	}
   /* USER CODE END CAN_Init 2 */
 
 }
@@ -364,7 +480,33 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void CanDataTx_ACC(uint16_t STDID)
+{
+	Tx1Header.StdId = STDID;
+	Tx1Header.IDE = CAN_ID_STD;
+	Tx1Header.RTR = CAN_RTR_DATA;
+	Tx1Header.DLC = ACC_BUFFER_SIZE;
+	Tx1Header.TransmitGlobalTime = DISABLE;
+}
 
+void ADC_ValueAverage(void){
+	
+	if(tenth_ms1 < averageCount){
+		averageTemp = averageTemp + AD_DMA[channel];
+		tenth_ms1++;
+	}
+	else{
+		averageValue[channel] = averageTemp / averageCount;
+		tenth_ms1 = 0;
+		averageTemp = 0;
+		if(channel < 2){
+			channel++;
+		}
+		else{
+			channel = 0;
+		}
+	}
+}
 /* USER CODE END 4 */
 
 /**
