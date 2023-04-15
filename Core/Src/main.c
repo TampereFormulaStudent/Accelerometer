@@ -63,7 +63,7 @@ volatile uint8_t channel = 0;
 volatile uint32_t averageTemp = 0;
 volatile uint32_t averageValue[3] = {0};
 
-uint32_t AD_DMA[3] = {0};
+uint32_t AD_DMA[4] = {0};
 uint16_t X = 0;
 uint16_t Y = 0;
 uint16_t Z = 0;
@@ -148,14 +148,14 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DMA_Init();
-  MX_ADC1_Init();
+	MX_DMA_Init();
+	MX_ADC1_Init();
   MX_CAN_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
 	HAL_TIM_Base_Start_IT(&htim4);
 	HAL_ADCEx_Calibration_Start(&hadc1);
-	HAL_ADC_Start_DMA(&hadc1, AD_DMA, 3);
+	HAL_ADC_Start_DMA(&hadc1, AD_DMA, 4);
 	__HAL_RCC_CAN1_CLK_ENABLE();
   /* USER CODE END 2 */
 
