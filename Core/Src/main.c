@@ -50,7 +50,7 @@ TIM_HandleTypeDef htim4;
 /* USER CODE BEGIN PV */
 uint8_t ACC_BUFFER_SIZE = 6;
 CAN_TxHeaderTypeDef Tx1Header;
-uint8_t TxData_ACC[6] = {0};
+uint8_t TxData_ACC[7] = {0};
 uint32_t TX_ID = 11;
 //uint32_t TX_ID = 19;
 uint32_t mailbox;
@@ -88,6 +88,8 @@ uint16_t sensitivity_z = 300;
 uint16_t Xmg = 0;
 uint16_t Ymg = 0;
 uint16_t Zmg = 0;
+
+uint16_t mcu_temp = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -171,6 +173,8 @@ int main(void)
 		Y_Volt= (Y * 3300) / 4096;
 		Z_Volt= (Z * 3300) / 4096;
 		
+		//get the mcu temperature from dma register
+		mcu_temp = (uint16_t)(357.558 - (float)AD_DMA[3] * 0.187364);
 		
 		/*Xmg=(X_Volt*2.18)*1000;
 		Ymg=(Y_Volt*2.18)*1000;
@@ -189,15 +193,16 @@ int main(void)
 		Ymg = Yg*1000 + OFFSET;
 		Zmg = Zg*1000 + OFFSET;
     
+		TxData_ACC[0] = (uint8_t)mcu_temp;
 		
-		TxData_ACC[0] = Xmg & 0x00FF; //8 low bits
-		TxData_ACC[1] = Xmg >> 8; //4 high bits
+		TxData_ACC[1] = Xmg & 0x00FF; //8 low bits
+		TxData_ACC[2] = Xmg >> 8; //4 high bits
 		
-		TxData_ACC[2] = Ymg & 0x00FF; //8 low bits
-		TxData_ACC[3] = Ymg >> 8; //4 high bits
+		TxData_ACC[3] = Ymg & 0x00FF; //8 low bits
+		TxData_ACC[4] = Ymg >> 8; //4 high bits
 		
-		TxData_ACC[4] = Zmg & 0x00FF; //8 low bits
-		TxData_ACC[5] = Zmg >> 8; //4 high bits
+		TxData_ACC[5] = Zmg & 0x00FF; //8 low bits
+		TxData_ACC[6] = Zmg >> 8; //4 high bits
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
