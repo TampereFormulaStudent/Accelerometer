@@ -159,6 +159,7 @@ int main(void)
 	HAL_ADCEx_Calibration_Start(&hadc1);
 	HAL_ADC_Start_DMA(&hadc1, AD_DMA, 4);
 	__HAL_RCC_CAN1_CLK_ENABLE();
+	HAL_GPIO_WritePin(GPIOB, TEST_Pin, GPIO_PIN_SET);
   /* USER CODE END 2 */
 
   /* Infinite loop */
