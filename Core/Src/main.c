@@ -352,7 +352,8 @@ static void MX_CAN_Init(void)
   hcan.Init.AutoRetransmission = DISABLE;
   hcan.Init.ReceiveFifoLocked = DISABLE;
   hcan.Init.TransmitFifoPriority = DISABLE;
-  if (HAL_CAN_Init(&hcan) != HAL_OK) {
+  if (HAL_CAN_Init(&hcan) != HAL_OK)
+  {
     Error_Handler();
   }
   /* USER CODE BEGIN CAN_Init 2 */
