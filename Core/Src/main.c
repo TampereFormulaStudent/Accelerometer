@@ -110,6 +110,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if(tenth_ms >= RxTime)
   {
+		//get the mcu temperature from dma register
+		mcu_temp = (uint16_t)(357.558 - (float)AD_DMA[3] * 0.187364);
+		
 		CanDataTx_ACC(TX_ID);
 		HAL_CAN_AddTxMessage(&hcan, &Tx1Header, TxData_ACC, &mailbox);
 		tenth_ms = 0;
@@ -173,9 +176,6 @@ int main(void)
 		X_Volt= (X * 3300) / 4096;
 		Y_Volt= (Y * 3300) / 4096;
 		Z_Volt= (Z * 3300) / 4096;
-		
-		//get the mcu temperature from dma register
-		mcu_temp = (uint16_t)(357.558 - (float)AD_DMA[3] * 0.187364);
 		
 		/*Xmg=(X_Volt*2.18)*1000;
 		Ymg=(Y_Volt*2.18)*1000;
@@ -322,7 +322,6 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
   sConfig.Rank = ADC_REGULAR_RANK_4;
-  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
