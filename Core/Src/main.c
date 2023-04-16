@@ -48,7 +48,7 @@ CAN_HandleTypeDef hcan;
 TIM_HandleTypeDef htim4;
 
 /* USER CODE BEGIN PV */
-uint8_t ACC_BUFFER_SIZE = 6;
+uint8_t ACC_BUFFER_SIZE = 7;
 CAN_TxHeaderTypeDef Tx1Header;
 uint8_t TxData_ACC[7] = {0};
 uint32_t TX_ID = 11;
@@ -67,7 +67,7 @@ uint32_t AD_DMA[4] = {0};
 uint16_t X = 0;
 uint16_t Y = 0;
 uint16_t Z = 0;
-float OFFSET = 3600;
+float OFFSET = 3000;
 
 float X_Volt = 0;
 float Y_Volt = 0;
@@ -159,7 +159,7 @@ int main(void)
 	HAL_ADCEx_Calibration_Start(&hadc1);
 	HAL_ADC_Start_DMA(&hadc1, AD_DMA, 4);
 	__HAL_RCC_CAN1_CLK_ENABLE();
-	HAL_GPIO_WritePin(GPIOB, TEST_Pin, GPIO_PIN_SET);
+	//HAL_GPIO_WritePin(GPIOB, TEST_Pin, GPIO_PIN_SET);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -204,6 +204,7 @@ int main(void)
 		
 		TxData_ACC[5] = Zmg & 0x00FF; //8 low bits
 		TxData_ACC[6] = Zmg >> 8; //4 high bits
+		HAL_Delay(1);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
