@@ -51,8 +51,8 @@ TIM_HandleTypeDef htim4;
 uint8_t ACC_BUFFER_SIZE = 7;
 CAN_TxHeaderTypeDef Tx1Header;
 uint8_t TxData_ACC[7] = {0};
-uint32_t TX_ID = 11;
-//uint32_t TX_ID = 19;
+//uint32_t TX_ID = 11;	// ID for front ACC
+uint32_t TX_ID = 19; // ID for rear ACC
 uint32_t mailbox;
 CAN_FilterTypeDef sFilterConfig;
 uint8_t RxTime = 100;
@@ -349,7 +349,7 @@ static void MX_CAN_Init(void)
   /* USER CODE END CAN_Init 1 */
   hcan.Instance = CAN1;
   hcan.Init.Prescaler = 9;
-  hcan.Init.Mode = CAN_MODE_NORMAL;
+  hcan.Init.Mode = CAN_MODE_LOOPBACK;
   hcan.Init.SyncJumpWidth = CAN_SJW_1TQ;
   hcan.Init.TimeSeg1 = CAN_BS1_3TQ;
   hcan.Init.TimeSeg2 = CAN_BS2_4TQ;
