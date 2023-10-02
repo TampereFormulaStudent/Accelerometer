@@ -52,13 +52,13 @@ uint8_t ACC_BUFFER_SIZE = 7;
 CAN_TxHeaderTypeDef Tx1Header;
 uint8_t TxData_ACC[7] = {0};
 //uint32_t TX_ID = 11;	// ID for front ACC
-uint32_t TX_ID = 19; // ID for rear ACC
+uint32_t TX_ID = 33; // ID for rear ACC
 uint32_t mailbox;
 CAN_FilterTypeDef sFilterConfig;
-uint8_t RxTime = 100;
+uint16_t TxTime = 5;
 uint16_t tenth_ms = 0;
 uint16_t tenth_ms1 = 0;
-uint8_t averageCount = 10;
+uint8_t averageCount = 5;
 volatile uint8_t channel = 0;
 volatile uint32_t averageTemp = 0;
 volatile uint32_t averageValue[3] = {0};
@@ -108,20 +108,27 @@ void ADC_ValueAverage(void);
 /* USER CODE BEGIN 0 */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-  if(tenth_ms >= RxTime)
+  if(tenth_ms >= TxTime)
   {
 		//get the mcu temperature from dma register
 		mcu_temp = (uint16_t)(357.558 - (float)AD_DMA[3] * 0.187364);
 		
 		CanDataTx_ACC(TX_ID);
-		HAL_CAN_AddTxMessage(&hcan, &Tx1Header, TxData_ACC, &mailbox);
+		if(HAL_CAN_GetTxMailboxesFreeLevel(&hcan)){
+			HAL_CAN_AddTxMessage(&hcan, &Tx1Header, TxData_ACC, &mailbox);
+		}
+		else{
+			HAL_CAN_AbortTxRequest(&hcan, 0);
+			HAL_CAN_AbortTxRequest(&hcan, 1);
+			HAL_CAN_AbortTxRequest(&hcan, 2);
+		}
 		tenth_ms = 0;
   }
   if(htim->Instance==TIM4)
+	{
     tenth_ms++;
 		ADC_ValueAverage();
-		//tenth_ms1++;
-	
+	}
 }
 /* USER CODE END 0 */
 
@@ -193,17 +200,18 @@ int main(void)
 		Xmg = Xg*1000 + OFFSET;
 		Ymg = Yg*1000 + OFFSET;
 		Zmg = Zg*1000 + OFFSET;
-    
-		TxData_ACC[0] = (uint8_t)mcu_temp;
 		
-		TxData_ACC[1] = Xmg & 0x00FF; //8 low bits
-		TxData_ACC[2] = Xmg >> 8; //4 high bits
+		TxData_ACC[0] = Xmg & 0x00FF; //8 low bits
+		TxData_ACC[1] = Xmg >> 8; //4 high bits
 		
-		TxData_ACC[3] = Ymg & 0x00FF; //8 low bits
-		TxData_ACC[4] = Ymg >> 8; //4 high bits
+		TxData_ACC[2] = Ymg & 0x00FF; //8 low bits
+		TxData_ACC[3] = Ymg >> 8; //4 high bits
 		
-		TxData_ACC[5] = Zmg & 0x00FF; //8 low bits
-		TxData_ACC[6] = Zmg >> 8; //4 high bits
+		TxData_ACC[4] = Zmg & 0x00FF; //8 low bits
+		TxData_ACC[5] = Zmg >> 8; //4 high bits
+		
+		TxData_ACC[6] = (uint8_t)mcu_temp;
+		
 		HAL_Delay(1);
     /* USER CODE END WHILE */
 
@@ -348,15 +356,15 @@ static void MX_CAN_Init(void)
 
   /* USER CODE END CAN_Init 1 */
   hcan.Instance = CAN1;
-  hcan.Init.Prescaler = 9;
-  hcan.Init.Mode = CAN_MODE_LOOPBACK;
+  hcan.Init.Prescaler = 12;
+  hcan.Init.Mode = CAN_MODE_NORMAL;
   hcan.Init.SyncJumpWidth = CAN_SJW_1TQ;
   hcan.Init.TimeSeg1 = CAN_BS1_3TQ;
-  hcan.Init.TimeSeg2 = CAN_BS2_4TQ;
+  hcan.Init.TimeSeg2 = CAN_BS2_2TQ;
   hcan.Init.TimeTriggeredMode = DISABLE;
   hcan.Init.AutoBusOff = DISABLE;
   hcan.Init.AutoWakeUp = DISABLE;
-  hcan.Init.AutoRetransmission = DISABLE;
+  hcan.Init.AutoRetransmission = ENABLE;
   hcan.Init.ReceiveFifoLocked = DISABLE;
   hcan.Init.TransmitFifoPriority = DISABLE;
   if (HAL_CAN_Init(&hcan) != HAL_OK)
@@ -369,7 +377,7 @@ static void MX_CAN_Init(void)
 	sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
 	sFilterConfig.FilterIdHigh = 0xFFFF;
 	sFilterConfig.FilterIdLow = 0x0000;
-	sFilterConfig.FilterMaskIdHigh = 0x0000;
+	sFilterConfig.FilterMaskIdHigh = 0xFFFF;
 	sFilterConfig.FilterMaskIdLow = 0x0000;
 	sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
 	sFilterConfig.FilterActivation = ENABLE;
@@ -414,7 +422,7 @@ static void MX_TIM4_Init(void)
 
   /* USER CODE END TIM4_Init 1 */
   htim4.Instance = TIM4;
-  htim4.Init.Prescaler = 36000-1;
+  htim4.Init.Prescaler = 18000-1;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim4.Init.Period = 1;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
