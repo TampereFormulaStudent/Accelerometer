@@ -51,8 +51,12 @@ TIM_HandleTypeDef htim4;
 uint8_t ACC_BUFFER_SIZE = 7;
 CAN_TxHeaderTypeDef Tx1Header;
 uint8_t TxData_ACC[7] = {0};
+
+// UNCOMMENT THE PROPER ID WHEN PROGRAMMING!
+
 //uint32_t TX_ID = 11;	// ID for front ACC
 uint32_t TX_ID = 33; // ID for rear ACC
+
 uint32_t mailbox;
 CAN_FilterTypeDef sFilterConfig;
 uint16_t TxTime = 5;
